@@ -1,43 +1,112 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
+    <title>图片上传 - GitHub Actions</title>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #2ea44f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <div>
-        账号输入框：<input type="text" id="username">
-        <br>
-        密码输入框：<input type="password" id="password">
+    <h1>图片上传 - GitHub Actions</h1>
+    
+    <form id="upload-form">
+        <div class="form-group">
+            <label for="image-url">图片URL (支持远程链接)</label>
+            <input type="url" id="image-url" name="imageUrl" required placeholder="https://example.com/image.jpg">
+        </div>
+        
+        <div class="form-group">
+            <label for="file-name">保存的文件名</label>
+            <input type="text" id="file-name" name="fileName" placeholder="my-image.jpg" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="commit-message">提交信息</label>
+            <input type="text" id="commit-message" name="commitMessage" placeholder="添加新图片" required>
+        </div>
+        
+        <button type="submit">创建图片上传请求</button>
+    </form>
+    
+    <div class="result" id="result">
+        <h3>操作结果</h3>
+        <p id="result-message"></p>
+        <p>查看 <a id="issue-link" target="_blank">创建的Issue</a> 获取上传进度</p>
     </div>
-    <div onclick="fetchData()">提交</div>
 
     <script>
-        function fetchData() {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            fetch('http://th57g8.natappfree.cc/api/user/userLogin', {
-                method: 'POST', // 指定请求方法
-                headers: {
-                    'Content-Type': 'application/json' // 设置请求头
-                },
-                body: JSON.stringify({ name: username, password: password }) // 将数据转换为 JSON 字符串
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok ' + response.statusText);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Response?:', data);
-            })
-            .catch(error => {
-                console.error('There was a problem with the fetch operation:', error);
-            });
-        }
-        
+        document.getElementById('upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const imageUrl = document.getElementById('image-url').value;
+            const fileName = document.getElementById('file-name').value;
+            const commitMessage = document.getElementById('commit-message').value;
+            
+            const repoOwner = 'Master-gugu';
+            const repoName = 'pic_image';
+            
+            try {
+                // 这里我们使用 GitHub API 创建一个 issue
+                // 实际应用中需要 GitHub Token，但在前端这样做不安全
+                // 以下代码仅作演示，实际应用需考虑安全问题
+                
+                // 提交 issue 的内容
+                const issueTitle = `[自动上传] 图片: ${fileName}`;
+                const issueBody = `
+请上传以下图片:
+
+- 图片URL: ${imageUrl}
+- 保存为: ${fileName}
+- 提交信息: ${commitMessage}
+
+自动创建于 ${new Date().toISOString()}
+`;
+                
+                // 在实际应用中，这里需要一个后端服务或 serverless 函数来处理
+                // 以下代码仅作示例展示，直接在前端使用 token 是不安全的
+                alert('在实际应用中，这里会创建一个 Issue，然后触发 GitHub Action。这需要后端服务支持。');
+                
+                // 模拟成功创建 issue
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('result-message').textContent = '已成功创建上传请求，GitHub Actions 将开始处理';
+                document.getElementById('issue-link').href = `https://github.com/${repoOwner}/${repoName}/issues`;
+                
+            } catch (error) {
+                alert('创建请求失败: ' + error.message);
+            }
+        });
     </script>
 </body>
 </html>

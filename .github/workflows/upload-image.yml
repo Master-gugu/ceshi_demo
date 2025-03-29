@@ -1,0 +1,102 @@
+name: 自动上传图片
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  upload-image:
+    # 仅处理标题含有 [自动上传] 的 issue
+    if: contains(github.event.issue.title, '[自动上传]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v2
+        
+      - name: 设置 Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+          
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+          
+      - name: 获取 Issue 详情并下载图片
+        id: process-issue
+        run: |
+          python -c "
+          import re
+          import os
+          import json
+          import requests
+          
+          # 获取 issue 内容
+          issue_body = '''${{ github.event.issue.body }}'''
+          
+          # 使用正则表达式提取需要的信息
+          image_url_match = re.search(r'图片URL: (.*?)\n', issue_body)
+          file_name_match = re.search(r'保存为: (.*?)\n', issue_body)
+          commit_message_match = re.search(r'提交信息: (.*?)\n', issue_body)
+          
+          if not all([image_url_match, file_name_match, commit_message_match]):
+              print('Issue格式不正确')
+              exit(1)
+              
+          image_url = image_url_match.group(1).strip()
+          file_name = file_name_match.group(1).strip()
+          commit_message = commit_message_match.group(1).strip()
+          
+          # 确保目标目录存在
+          os.makedirs('images', exist_ok=True)
+          
+          # 下载图片
+          print(f'正在下载图片: {image_url}')
+          response = requests.get(image_url, stream=True)
+          response.raise_for_status()
+          
+          file_path = os.path.join('images', file_name)
+          with open(file_path, 'wb') as f:
+              for chunk in response.iter_content(chunk_size=8192):
+                  f.write(chunk)
+                  
+          print(f'图片已保存到: {file_path}')
+          
+          # 将信息输出到环境变量，供后续步骤使用
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'file_path={file_path}\n')
+              f.write(f'commit_message={commit_message}\n')
+          "
+          
+      - name: 提交图片到仓库
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add "${{ steps.process-issue.outputs.file_path }}"
+          git commit -m "${{ steps.process-issue.outputs.commit_message }}"
+          git push
+          
+      - name: 添加评论到 Issue
+        uses: actions/github-script@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ 图片上传完成！\n\n图片已成功添加到仓库，访问链接：https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/${{ steps.process-issue.outputs.file_path }}`
+            })
+            
+      - name: 关闭 Issue
+        uses: actions/github-script@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.update({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed'
+            })
